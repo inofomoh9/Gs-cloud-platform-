@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>GS Cloud YouTube (2GB Upload)</title>
+  <script src="https://js.paystack.co/v1/inline.js"></script>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-900 text-white p-6 font-sans">
+  <div class="max-w-3xl mx-auto space-y-6">
+    <h1 class="text-3xl font-bold text-blue-400">GS Cloud YouTube Africa</h1>
+
+    <form id="uploadForm" enctype="multipart/form-data" class="space-y-4 bg-gray-800 p-4 rounded">
+      <input type="file" name="video" class="block w-full text-black p-2 rounded" required />
+      <input type="text" name="title" placeholder="Video Title" class="block w-full text-black p-2 rounded" required />
+      <select name="type" class="block w-full text-black p-2 rounded">
+        <option value="long">Long</option>
+        <option value="short">Short</option>
+      </select>
+      <input type="email" name="email" placeholder="Uploader Email" class="block w-full text-black p-2 rounded" required />
+      <button type="submit" class="bg-blue-600 px-4 py-2 rounded text-white">Upload Video (up to 2GB)</button>
+    </form>
+
+    <h2 class="text-xl font-semibold mt-10">📺 Uploaded Videos</h2>
+    <div id="videoList" class="space-y-10"></div>
+  </div>
+
+  <script>
+    const form = document.getElementById("uploadForm");
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const formData = new FormData(form);
+      const res = await fetch("upload.php", {
+        method: "POST",
+        body: formData
+      });
+      const msg = await res.text();
+      alert(msg);
+      loadVideos();
+    });
+
+    async function loadVideos() {
+      const container = document.getElementById("videoList");
+      container.innerHTML = "";
+      const res = await fetch("videos.json");
+      const videos = await res.json();
+      for (let i = videos.length - 1; i >= 0; i--) {
+        const v = videos[i];
+        const style = v.type === "short" ? "height: 400px; object-fit: cover;" : "width: 100%;";
+        const comments = (v.comments || []).map(c => `<li>${c}</li>`).join("");
+        container.innerHTML += `
+          <div class="bg-gray-800 p-4 rounded">
+            <video controls style="${style}" class="rounded w-full mb-2">
+              <source src="${v.url}" type="video/mp4">
+            </video>
+            <p class="text-lg font-bold">${v.title} (${v.type})</p>
+            <p class="text-sm text-gray-300">Uploader: ${v.uploader} • ${v.size_mb || 0}MB</p>
+            <button onclick="tipCreator('${v.uploader}')" class="text-yellow-400 mt-2">💰 Tip Creator ₦1000</button>
+            <button onclick="addComment(${i})" class="text-green-400 ml-4">💬 Add Comment</button>
+            <ul class="mt-2 text-sm text-gray-300">${comments}</ul>
+          </div>
+        `;
+      }
+    }
+
+    function tipCreator(email) {
+      let handler = PaystackPop.setup({
+        key: 'pk_test_aada79f897629222d7b87eb9f01ac0d9674eda1d',
+        email: email,
+        amount: 100000,
+        currency: "NGN",
+        callback: function(response){
+            alert("Thanks for tipping! Ref: " + response.reference);
+        },
+        onClose: function(){
+            alert("Tip window closed");
+        }
+      });
+      handler.openIframe();
+    }
+
+    function addComment(index) {
+      const comment = prompt("Enter your comment:");
+      if (!comment) return;
+      fetch("comment.php", {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: "index=" + index + "&comment=" + encodeURIComponent(comment)
+      }).then(res => res.text()).then(msg => {
+        alert(msg);
+        loadVideos();
+      });
+    }
+
+    loadVideos();
+  </script>
+</body>
+</html>
